@@ -1,0 +1,20 @@
+extends layout
+block content
+    .container
+        h1 Data of user #{ofUser}
+        br
+        div
+            table.table-striped
+                thead
+                    tr
+                        th Title
+                        th Timestamp
+                        th FEV1
+                        th FVC
+                tbody
+                    each item in spirometryData
+                        tr
+                            td #{item.title}
+                            td #{item.dateTime}
+                            td #{item.fev1}
+                            td #{item.fvc}

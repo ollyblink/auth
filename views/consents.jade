@@ -1,0 +1,29 @@
+extends layout
+block content
+    .container
+        h1 Consents granted to other users to see my data
+        br
+        div
+            table.table-striped
+                thead
+                    tr
+                        th Granted to
+                tbody
+                    each user in grantedTo
+                        tr
+                            td #{user}
+        br
+        h1 Consents granted by users so that I can see their data
+            br
+        div
+            table.table-striped
+                thead
+                    tr
+                        th Granted by user
+                        th show data
+                tbody
+                    each user in grantedBy
+                        tr
+                            td #{user}
+                            td
+                                a(href="/data/showdata/#{user}" ) show

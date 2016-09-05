@@ -1,0 +1,18 @@
+extends layout
+
+block content
+  .container
+    h1 Add data
+    p.lead Add a new data item for respiratory data
+    br
+    form(role='form', action="/data/spirometrydataitem",method="post", style='max-width: 300px;')
+      .form-group
+          input.form-control(type='text', name="title", placeholder='Enter Title')
+      .form-group
+        input.form-control(type='number', name="fev1", placeholder='Enter FEV1')
+      .form-group
+        input.form-control(type='number', name="fvc", placeholder='Enter FEV1')
+      button.btn.btn-default(type='submit') Submit
+      &nbsp;
+      a(href='/')
+        button.btn.btn-primary(type="button") Cancel
