@@ -104,15 +104,5 @@ router.get('/logout', function (req, res) {
     res.redirect('/login');
 });
 
-router.get('/ping', function (req, res) {
-    var isAuthen = "";
-    if (req.user) {
-        isAuthen = req.user + " User is authenticated. Should not happen";
-    } else {
-        isAuthen = "User is not authenticated. Thats what we want";
-    }
-    res.status(200).send(isAuthen);
-});
-
 
 module.exports = router;

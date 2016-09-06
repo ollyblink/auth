@@ -20,28 +20,45 @@ router.get('/grantdataaccess', security.isLoggedIn, function (req, res) {
                 usernames.push(people[i].username);
             }
         }
-        res.render('grantdataaccess', {usernames: usernames});
+        res.render('grantdataaccess', {user: req.user.username, usernames: usernames});
     });
 });
+
+
 router.get('/allconsents', security.isLoggedIn, function (req, res) {
-    Consent.find().where('sender').equals(req.user.username).select('receiver').exec(function (err, users) {
+    Consent.find().where('sender').equals(req.user.username).exec(function (err, consents) {
         var grantedTo = [];
-        if (users) {
-            for (var i = 0; i < users.length; i++) {
-                grantedTo.push(users[i].receiver);
+        if (consents) {
+            for (var i = 0; i < consents.length; i++) {
+                grantedTo.push(consents[i]);
             }
         }
-        Consent.find().where('receiver').equals(req.user.username).select('sender').exec(function (err2, users2) {
+        Consent.find().where('receiver').equals(req.user.username).exec(function (err2, consents2) {
             var grantedBy = [];
-            if (users2) {
-                for (var i = 0; i < users2.length; i++) {
-                    grantedBy.push(users2[i].sender);
+            if (consents2) {
+                for (var i = 0; i < consents2.length; i++) {
+                    grantedBy.push(consents2[i]);
                 }
             }
-            console.log("Found: "+ JSON.stringify(grantedTo));
-            console.log("Found: "+ JSON.stringify(grantedBy));
-            res.render('consents', {grantedTo: grantedTo, grantedBy: grantedBy});
+            console.log("Found: " + JSON.stringify(grantedTo));
+            console.log("Found: " + JSON.stringify(grantedBy));
+            res.render('consents', {grantedTo: grantedTo, grantedBy: grantedBy, user: req.user.username});
         });
+    });
+});
+
+/**
+ * should be delete
+ */
+router.get('/deleteconsent/consentid/:consentid', function (req, res) {
+    Consent.remove({_id: req.params.consentid}, function (err) {
+        if (err) {
+            console.error("Could not remove consent with id: " + req.params.consentid);
+        }
+        else {
+            console.error("Successfully removed consent with id: " + req.params.consentid);
+        }
+        res.redirect("/consents/allconsents");
     });
 });
 

@@ -8,10 +8,13 @@ block content
                 thead
                     tr
                         th Granted to
+                        th
                 tbody
-                    each user in grantedTo
+                    each item in grantedTo
                         tr
-                            td #{user}
+                            td #{item.receiver}
+                            td
+                                a(href="/consents/deleteconsent/consentid/#{item._id}" ) delete
         br
         h1 Consents granted by users so that I can see their data
             br
@@ -22,8 +25,8 @@ block content
                         th Granted by user
                         th show data
                 tbody
-                    each user in grantedBy
+                    each item in grantedBy
                         tr
-                            td #{user}
+                            td #{item.sender}
                             td
-                                a(href="/data/showdata/#{user}" ) show
+                                a(href="/data/showdata/#{item.sender}" ) show

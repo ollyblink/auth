@@ -35,5 +35,7 @@
     "typescript": "^1.8.10"
   },
   "devDependencies": {
+    "mocha": "^3.0.2",
+    "supertest": "^2.0.0"
   }
 }
