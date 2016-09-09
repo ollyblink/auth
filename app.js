@@ -1,13 +1,14 @@
 var express = require('express');
+var Account = require('./models/account');
 var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var security = require('./security/securityhelper')
+var db = require('./models/db').getDB(require('./config/config').db.production);
 
 // Parse incoming request bodies under the req.body property
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
 
 //Define the routes
 var indexRoutes = require('./routes/index');
@@ -22,8 +23,6 @@ var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 
 var app = express();
-
-
 app.use(cors());
 
 // view engine setup
@@ -40,7 +39,7 @@ app.use(require('express-session')({
     secret: security.createRandomSymmetricKeyString(),
     resave: false,
     saveUninitialized: false,
-    cookie: {secure: false, httpOnly: false}
+    cookie: {secure: true, httpOnly: true}
 }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -52,19 +51,9 @@ app.use('/consents', consentRoutes);
 
 
 // passport config
-var Account = require('./models/account');
 passport.use(new LocalStrategy(Account.authenticate()));
 passport.serializeUser(Account.serializeUser());
 passport.deserializeUser(Account.deserializeUser());
-
-// connect db - required the mongo db to be started mongoose
-mongoose.connect('mongodb://localhost/encryptedusertrials');
-
-var db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function () {
-    console.log("We are connected!");
-});
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {

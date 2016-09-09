@@ -41,6 +41,7 @@ router.get('/showdata/:username', security.isLoggedIn, function (req, res) {
 
 function findDataForUser(username, encryptionKey, req, res) {
     console.log("username: " + username + ", enckey: " + encryptionKey);
+
     Person.findOne()
         .where('username').equals(username)
         .select('spirometryData').exec(function (err, data) {
@@ -53,16 +54,17 @@ function findDataForUser(username, encryptionKey, req, res) {
         var decryptedData = [];
         for (var i = 0; i < data.spirometryData.length; ++i) {
             var decryptedDataItem = security.symmetricDecrypt(data.spirometryData[i], encryptionKey);
-            decryptedData.push(JSON.parse(decryptedDataItem));
+            var asJson = JSON.parse(decryptedDataItem);
+            console.log("b decryptedDataItem.dateTime: " + asJson.dateTime);
+            decryptedData.push(asJson);
         }
         console.log("all items: " + JSON.stringify(decryptedData));
         res.render("data", {spirometryData: decryptedData, ofUser: username, user: req.user.username});
     });
 }
-
 /**
  * Should be put/update
-router.get('/updatedata/item/:itemtitle', security.isLoggedIn, function (req, res) {
+ router.get('/updatedata/item/:itemtitle', security.isLoggedIn, function (req, res) {
     var username = req.user.username;
      Person.findOne()
         .where('username').equals(username)
@@ -91,18 +93,18 @@ router.get('/adddata', security.isLoggedIn, function (req, res) {
 /**
  * should be delete
  */
-router.get('/deletedata/item/:itemtitle', security.isLoggedIn, function (req, res) {
+router.get('/deletedata/user/:user/item/:itemtitle', security.isLoggedIn, function (req, res) {
     console.log("delete data " + req.params.itemtitle);
-    var username = req.user.username;
+    var username = req.params.user;
     console.log("user: " + username);
+
     Person.findOne({username: username})
         .exec(function (err, user) {
             if (err) {
                 console.log("Error occurred while retrieving spirometry data for user " + username);
                 res.redirect("/login");
             }
-
-            console.log("user: " + user.spirometryData.length);
+            console.log("#data items: " + user.spirometryData.length);
             for (var i = 0; i < user.spirometryData.length; ++i) {
                 var decryptedDataItem = security.symmetricDecrypt(user.spirometryData[i], req.session.encryptionKey);
                 var asJSON = JSON.parse(decryptedDataItem);
@@ -126,31 +128,30 @@ router.post('/spirometrydataitem', security.isLoggedIn, function (req, res) {
         }
         var itemtitle = req.body.itemtitle; //may only be set in case of an update
 
-
         var title = req.body.title;
-        var dateTime = Date.now();
+        var dateTime = new Date().toJSON();
         var fvc = req.body.fvc;
         var fev1 = req.body.fev1;
 
-        if(itemtitle){ //Update
+        if (itemtitle) { //Update
             for (var i = 0; i < user.spirometryData.length; ++i) {
                 var decryptedDataItem = security.symmetricDecrypt(user.spirometryData[i], req.session.encryptionKey);
                 var dataset = JSON.parse(decryptedDataItem);
-                if(dataset.title === itemtitle){
-                    console.log("update data: "+ JSON.stringify(dataset));
+                if (dataset.title === itemtitle) {
+                    console.log("update data: " + JSON.stringify(dataset));
                     dataset.title = title;
                     dataset.fvc = fvc;
                     dataset.fev1 = fev1;
                     var newEncryptedDataItem = security.symmetricEncrypt(JSON.stringify(dataset), req.session.encryptionKey);
 
-                    user.splice(i, 1, newEncryptedDataItem); //Delete old dataset and add new dataset instead
+                    user.splice(i, 1, newEncryptedDataItem); //Delete old data set and add new data set instead
                     user.save();
 
                     res.redirect('/data/showdata/' + req.user.username);
                     break;
                 }
             }
-        }else { //create new entry
+        } else { //create new entry
             var toEncrypt = {
                 title: title,
                 dateTime: dateTime,

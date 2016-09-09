@@ -14,7 +14,8 @@ block content
                         tr
                             td #{item.receiver}
                             td
-                                a(href="/consents/deleteconsent/consentid/#{item._id}" ) delete
+                                if(user == ofUser)
+                                    a(href="/consents/deleteconsent/consentid/#{item._id}" ) delete
         br
         h1 Consents granted by users so that I can see their data
             br

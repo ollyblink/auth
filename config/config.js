@@ -1,3 +1,7 @@
 module.exports = {
-    withSession: true
+    withSession: true,
+    db: {
+        production: 'mongodb://localhost/encryptedusertrials',
+        test: 'mongodb://localhost/testdb'
+    }
 };

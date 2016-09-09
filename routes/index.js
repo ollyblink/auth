@@ -10,15 +10,34 @@ var router = express.Router();
 //Import the required models
 var Account = require('../models/account');
 var Person = require('../models/person');
-var Consent = require('../models/consent');
 
+/**
+ * Register a new user
+ */
+router.get('/register', function (req, res) {
+    res.render('register', {});
+});
 
+/**
+ * Base path redirects to login
+ */
 router.get('/', function (req, res) {
     res.redirect('/login');
 });
 
-router.get('/register', function (req, res) {
-    res.render('register', {});
+/**
+ * login page. User needs to be registered first.
+ */
+router.get('/login', function (req, res) {
+    res.render('login');
+});
+
+/**
+ * log out. Redirects to login
+ */
+router.get('/logout', function (req, res) {
+    req.logout();
+    res.redirect('/login');
 });
 
 
@@ -38,40 +57,26 @@ router.post('/register', function (req, res) {
     Account.register(new Account({username: username}), password, function (err, account) {
         if (err) {
             console.log("Error while registering user.", err);
-            res.locals.err = err.message;
             return res.render('register', {account: account});
         }
-
-        var keyPair = security.createKeyPair();
-        var privateKeyEnc = security.symmetricEncrypt(keyPair.privateKey, req.body.password);
-        var encryptionKey = security.createRandomSymmetricKeyString();
-        var encryptionKeyEnc = security.encryptStringWithRsaPublicKey(encryptionKey, keyPair.publicKey);
-
-        console.log("username: " + username + "\nPassword: " + password + "\npublicKey: " + keyPair.publicKey + "\nprivate key: " + keyPair.privateKey + "\nprivateKeyEnc: " + privateKeyEnc + "\nencryptionKey: " + encryptionKey + "\nencryptionKeyEnc: " + encryptionKeyEnc)
-        var person = new Person({
-            username: username,
-            publicKey: keyPair.publicKey,
-            privateKeyEnc: privateKeyEnc,
-            encryptionKeyEnc: encryptionKeyEnc
-        });
-
-        person.save(function (err, person) {
+        new Person().storeUser(username, password, function (err, person) {
             if (err) {
                 console.error("could not save new person with name " + person.username, err);
-                res.locals.error = err.message;
                 res.redirect("/register");
             } else {
+                console.log("Successfully saved new person with username " + person.username);
                 passport.authenticate('local')(req, res, function () {
-                    res.locals.user = person;
                     res.redirect("/");
                 });
-                console.log("Successfully saved new person with username " + person.username);
             }
         });
     });
 });
 
 
+/**
+ * Login with a session
+ */
 router.post('/login', passport.authenticate('local', {session: config.withSession}), function (req, res) {
     var username = req.body.username;
     var password = req.body.password;
@@ -92,16 +97,6 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
         res.render('index', {user: username});
     });
 
-});
-
-router.get('/login', function (req, res) {
-    res.render('login');
-});
-
-
-router.get('/logout', function (req, res) {
-    req.logout();
-    res.redirect('/login');
 });
 
 
