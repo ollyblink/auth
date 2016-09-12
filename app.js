@@ -4,7 +4,7 @@ var path = require('path');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
-var security = require('./security/securityhelper')
+var security = require('./utils/security/securityhelper')
 var db = require('./models/db').getDB(require('./config/config').db.production);
 
 // Parse incoming request bodies under the req.body property
@@ -39,7 +39,7 @@ app.use(require('express-session')({
     secret: security.createRandomSymmetricKeyString(),
     resave: false,
     saveUninitialized: false,
-    cookie: {secure: true, httpOnly: true}
+    cookie: {secure: false, httpOnly: false}
 }));
 app.use(passport.initialize());
 app.use(passport.session());

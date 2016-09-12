@@ -56,4 +56,16 @@ describe('Person#storeUser', function () {
             done();
         });
     });
+    it('should not be possible to create two users with the same username', function (done) {
+        this.timeout(10000); //may take time to create the PKI
+        var username = "u1";
+        var password = "u1";
+        new Person().storeUser(username, password, function (err, person) {
+            new Person().storeUser(username, password, function (err, person) {
+                expect(err.code).to.equal(11000); //Duplicate
+                console.log("Error: "+ err);
+                done();
+            });
+        });
+    });
 });

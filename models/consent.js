@@ -3,14 +3,25 @@
  */
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var security = require('../security/securityhelper');
+var security = require('../utils/security/securityhelper');
 
 var ConsentSchema = new Schema({
-    sender: String, //username of the person giving the consent for her/his data
-    receiver: String, //username of the person getting the consent for the other user's data
-    encryptionKeyEnc: String //Encrypted encryption key used to decrypt the other users data. Encrypted with public key of the receiver
+    sender: {
+        type: String,
+        required: true
+    }, //username of the person giving the consent for her/his data
+    receiver: {
+        type: String,
+        required: true
+    }, //username of the person getting the consent for the other user's data
+    encryptionKeyEnc: {
+        type: String,
+        required: true
+    } //Encrypted encryption key used to decrypt the other users data. Encrypted with public key of the receiver
 });
 
+//Make sure the consent can only exist once for each sender and receiver
+ConsentSchema.index({sender: 1, receiver: 1}, {unique: true});
 
 /**
  * Creates a new consent. This means that receiver is able to read the data of sender.

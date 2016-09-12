@@ -1,6 +1,6 @@
 /// <reference path="../typings/globals/mocha/index.d.ts" />
 
-import {AsymmetricEncryptionHelper}  from '../security/AsymmetricEncryptionHelper';
+import {AsymmetricEncryptionHelper}  from '../utils/security/AsymmetricEncryptionHelper';
 import {assert} from "chai";
 
 describe('AsymmetricEncryptionHelper', ()=> {

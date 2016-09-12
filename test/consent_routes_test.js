@@ -8,6 +8,8 @@ var expect = require('chai').expect;
 var should = require('should');
 var Person = require('../models/person');
 var Account = require('../models/account');
+var security = require('./securityhelper');
+var functionsToTest = require('../routes/consent');
 
 var server;
 var testSession;
@@ -83,7 +85,16 @@ describe('Grant Data Access', function () {
 
     });
 
+    describe('Get user that have no consent with the user yet', function () {
 
+        it('should retrieve only those users that do not already contain a consent in the consent database', function (done) {
+            var counter = 0;
+            //make a consent
+            var keyPair = security.createKeyPair();
+            new Consent().createConsent("sender", "receiver", "super difficult key", keyPair.privateKey, function (err, consent) {
+                functionsToTest.getUsersWithoutAccess();
+            });
+        });
+    });
 });
-
 

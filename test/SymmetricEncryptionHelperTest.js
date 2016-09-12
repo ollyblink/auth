@@ -1,7 +1,7 @@
 "use strict";
 /// <reference path="../typings/globals/mocha/index.d.ts" />
 //see also node-rsa
-const SymmetricEncryptionHelper_1 = require('../security/SymmetricEncryptionHelper');
+const SymmetricEncryptionHelper_1 = require('./SymmetricEncryptionHelper');
 const chai_1 = require("chai");
 describe('SymmetricEncryptionHelper', () => {
     describe('#symmetric', () => {

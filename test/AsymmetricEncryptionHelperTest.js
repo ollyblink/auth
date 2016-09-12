@@ -1,6 +1,6 @@
 /// <reference path="../typings/globals/mocha/index.d.ts" />
 "use strict";
-var AsymmetricEncryptionHelper_1 = require('../security/AsymmetricEncryptionHelper');
+var AsymmetricEncryptionHelper_1 = require('./AsymmetricEncryptionHelper');
 var chai_1 = require("chai");
 describe('AsymmetricEncryptionHelper', function () {
     describe('#asymmetric en- and decryption', function () {

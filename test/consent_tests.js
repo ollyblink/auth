@@ -2,7 +2,7 @@ var config = require('../config/config');
 var mongoose = require('mongoose');
 var expect = require('chai').expect;
 var Consent = require('../models/consent');
-var security = require('../security/securityhelper');
+var security = require('../utils/security/securityhelper');
 
 
 describe('Consent#createConsent', function () {
@@ -57,6 +57,24 @@ describe('Consent#createConsent', function () {
             expect(consent.receiver).to.equal('u2');
             expect(security.decryptStringWithRsaPrivateKey(consent.encryptionKeyEnc, keys.privateKey)).to.equal(encryptionKey);
             done();
+        });
+    });
+    it('should not be possible to create two consents for the same sender/receiver pair', function (done) {
+        this.timeout(10000); //may take time to create the PKI
+        var sender = "u1";
+        var receiver = "u2";
+        var encryptionKey = "testKey1234";
+        var keys = security.createKeyPair();
+
+        //sender, receiver, encryptionKey, publicKey, saveFunction
+
+        new Consent().createConsent(sender, receiver, encryptionKey, keys.publicKey, function (err, consent) {
+              new Consent().createConsent(sender, receiver, encryptionKey, keys.publicKey, function (err, consent) {
+                 expect(err.code).to.equal(11000); //Duplicate
+                 console.log("Error: "+ err);
+                 done();
+
+             });
         });
     });
 });

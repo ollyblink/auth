@@ -1,6 +1,7 @@
 var express = require('express');
 var passport = require('passport');
-var security = require('../security/securityhelper');
+var security = require('../utils/security/securityhelper');
+var authentication = require('../utils/authentication/authenticationhelper');
 var config = require("../config/config")
 
 var router = express.Router();
@@ -9,91 +10,91 @@ var router = express.Router();
 var Person = require('../models/person');
 var Consent = require('../models/consent');
 
-router.get('/', function (req, res) {
-    res.status(200).send('ok');
-});
-
-router.get('/showdata/:username', security.isLoggedIn, function (req, res) {
+/**
+ * Retrieves all data for a user specified by its username.
+ * If the requesting user is the same as the user whose data items are requested, the encryption key is taken directly from the session.
+ * Else, it needs to be checked if the requesting user is allowed to access the data item of the user. For this,
+ * a consent needs to exist, which is checked first.
+ */
+router.get('/showdata/:username', authentication.isLoggedIn, function (req, res) {
     console.log("key: " + req.session.encryptionKey);
     console.log("user: " + req.params.username);
     console.log("user in session: " + req.user.username);
+
+    var userToFind;
+    var encryptionKey;
+
+    //Means that you need to have a consent to access this data item.
     if (req.params.username !== req.user.username) {
-        var username = req.params.username;
+        userToFind = req.params.username;
+        console.log("User to find data for: [" + userToFind + "]");
         //external user specified in link
         Consent.findOne()
-            .where('sender').equals(username)
+            .where('sender').equals(userToFind)
             .where('receiver').equals(req.user.username)
             .select('encryptionKeyEnc').exec(function (err, data) {
-            console.log("inside findOne")
+             if (err) {
+                var errorMsg = "Error occurred while retrieving data for user " + userToFind;
+                console.log(errorMsg);
+                res.status(500).send(errorMsg);
+            }
             if (data) {
-                console.log("encKeyenc: " + data.encryptionKeyEnc);
-                var usersEncryptionKey = security.decryptStringWithRsaPrivateKey(data.encryptionKeyEnc, req.session.privateKey);
-                console.log("decrypted enc key " + usersEncryptionKey);
-                findDataForUser(username, usersEncryptionKey, req, res);
+                encryptionKey = security.decryptStringWithRsaPrivateKey(data.encryptionKeyEnc, req.session.privateKey);
+                console.log("decrypted enc key " + encryptionKey);
+                findDataForUser(userToFind, encryptionKey, res);
             } else {
-                console.error("Could not find matching consent for user " + username);
+                var notFoundMsg = "Could not find matching consent for user " + userToFind;
+                console.error(notFoundMsg);
+                res.status(404).send(notFoundMsg);
             }
         });
     } else { // no user name specified --> display own data
-        findDataForUser(req.user.username, req.session.encryptionKey, req, res);
+        userToFind = req.user.username;
+        encryptionKey = req.session.encryptionKey;
+        findDataForUser(userToFind, encryptionKey, res);
     }
 });
 
-function findDataForUser(username, encryptionKey, req, res) {
-    console.log("username: " + username + ", enckey: " + encryptionKey);
+/**
+ * Retrieves the data for a specified user (specified by username)
+ *
+ * @param username the user to retrieve the data from
+ * @param encryptionKey the user's encryption key to decrypt the data
+ * @param userToFind
+ * @param res
+ */
+function findDataForUser(userToFind, encryptionKey, res) {
 
     Person.findOne()
-        .where('username').equals(username)
+        .where('username').equals(userToFind)
         .select('spirometryData').exec(function (err, data) {
 
         if (err) {
-            console.log("Error occurred while retrieving spirometry data for user " + username);
+            console.log("Error occurred while retrieving spirometry data for user " + userToFind);
             res.redirect("/login");
         }
-        console.log("inside person");
+        console.log("Found data for user[" + userToFind + "]");
         var decryptedData = [];
         for (var i = 0; i < data.spirometryData.length; ++i) {
             var decryptedDataItem = security.symmetricDecrypt(data.spirometryData[i], encryptionKey);
             var asJson = JSON.parse(decryptedDataItem);
-            console.log("b decryptedDataItem.dateTime: " + asJson.dateTime);
             decryptedData.push(asJson);
         }
-        console.log("all items: " + JSON.stringify(decryptedData));
-        res.render("data", {spirometryData: decryptedData, ofUser: username, user: req.user.username});
-    });
-}
-/**
- * Should be put/update
- router.get('/updatedata/item/:itemtitle', security.isLoggedIn, function (req, res) {
-    var username = req.user.username;
-     Person.findOne()
-        .where('username').equals(username)
-        .select('spirometryData').exec(function (err, data) {
-            if (err) {
-                console.log("Error occurred while retrieving spirometry data for user " + username);
-                res.redirect("/login");
-            }
-            for (var i = 0; i < data.spirometryData.length; ++i) {
-                var decryptedDataItem = security.symmetricDecrypt(data.spirometryData[i], req.session.encryptionKey);
-                var dataset = JSON.parse(decryptedDataItem);
-                if(dataset.title === req.params.itemtitle){
-                    console.log("Found data: "+ JSON.stringify(dataset));
-                    res.render('adddata', {user: req.user.username, dataset: dataset});
-                }
-            }
-            res.render('addddata', {user: req.user.username});
-    });
-});
+        console.log("All data items found for user [" + userToFind + "]: " + JSON.stringify(decryptedData));
 
+        res.render("data", {spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
+
+    });
+};
+
+/**
+ * Renders a website to add a new data item
  */
-router.get('/adddata', security.isLoggedIn, function (req, res) {
+router.get('/adddata', authentication.isLoggedIn, function (req, res) {
     res.render('adddata', {user: req.user.username});
 });
 
-/**
- * should be delete
- */
-router.get('/deletedata/user/:user/item/:itemtitle', security.isLoggedIn, function (req, res) {
+router.delete('/deletedata/user/:user/item/:itemtitle', authentication.isLoggedIn, function (req, res) {
     console.log("delete data " + req.params.itemtitle);
     var username = req.params.user;
     console.log("user: " + username);
@@ -120,7 +121,7 @@ router.get('/deletedata/user/:user/item/:itemtitle', security.isLoggedIn, functi
         });
 });
 
-router.post('/spirometrydataitem', security.isLoggedIn, function (req, res) {
+router.post('/spirometrydataitem', authentication.isLoggedIn, function (req, res) {
     Person.findOne({username: req.user.username}).exec(function (err, user) {
         if (err) {
             console.log("an error occured: " + err.message);
@@ -146,7 +147,6 @@ router.post('/spirometrydataitem', security.isLoggedIn, function (req, res) {
 
                     user.splice(i, 1, newEncryptedDataItem); //Delete old data set and add new data set instead
                     user.save();
-
                     res.redirect('/data/showdata/' + req.user.username);
                     break;
                 }

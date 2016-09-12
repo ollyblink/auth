@@ -1,16 +1,30 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var security = require('../security/securityhelper');
+var security = require('../utils/security/securityhelper');
+
 
 /**
  * Schema definition for a new user. It's not the same as the Account used to authenticate
  * (although the username is the same in both cases).
  */
 var PersonSchema = new Schema({
-    username: String, // username is the same as in the account
-    publicKey: String, //Public key of the PKI
-    privateKeyEnc: String, //Encrypted private key of the PKI, encrypted using password (symmetric encryption currently)
-    encryptionKeyEnc: String, //Encrypted encryption key used to encrypt data, encrypted using the public key
+    username: {
+        type: String,
+        required: true,
+        unique: true
+    }, // username is the same as in the account
+    publicKey: {
+        type: String,
+        required: true
+    }, //Public key of the PKI
+    privateKeyEnc: {
+        type: String,
+        required: true
+    }, //Encrypted private key of the PKI, encrypted using password (symmetric encryption currently)
+    encryptionKeyEnc: {
+        type: String,
+        required: true
+    }, //Encrypted encryption key used to encrypt data, encrypted using the public key
     spirometryData: [String]  // measurements
 });
 /**
@@ -19,20 +33,23 @@ var PersonSchema = new Schema({
  * This is a static function to be invoked on the schema.
  * @param username to match the user against the username of the account.
  * @param password the password provided on log in. clear text. used to encrypt the private key.
+ * @param saveFunction actions to be taken after the new user was stored
  *
- * @returns a new person object to be stored in the MongoDB
+ *
  */
 PersonSchema.methods.storeUser = function (username, password, saveFunction) {
-    var keyPair = security.createKeyPair();
-    var privateKeyEnc = security.symmetricEncrypt(keyPair.privateKey, password);
-    var encryptionKey = security.createRandomSymmetricKeyString();
-    var encryptionKeyEnc = security.encryptStringWithRsaPublicKey(encryptionKey, keyPair.publicKey);
-
+    //Assign the username
     this.username = username;
+    //Create the new public and private keys
+    var keyPair = security.createKeyPair();
+    //Store the public key without encrypting
     this.publicKey = keyPair.publicKey;
-    this.privateKeyEnc = privateKeyEnc;
-    this.encryptionKeyEnc = encryptionKeyEnc;
-
+    //Encrypt the private key with the password
+    this.privateKeyEnc = security.symmetricEncrypt(keyPair.privateKey, password);
+    //Create a new random symmetric key of length 128
+    var encryptionKey = security.createRandomSymmetricKeyString();
+    //Encrypt the encryption key using the public key
+    this.encryptionKeyEnc = security.encryptStringWithRsaPublicKey(encryptionKey, keyPair.publicKey);
     this.save(saveFunction);
 }
 

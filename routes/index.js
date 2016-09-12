@@ -1,7 +1,7 @@
 var express = require('express');
 var passport = require('passport');
 var mongoose = require('mongoose');
-var security = require('../security/securityhelper');
+var security = require('../utils/security/securityhelper');
 var config = require("../config/config")
 
 var router = express.Router();
@@ -80,6 +80,7 @@ router.post('/register', function (req, res) {
 router.post('/login', passport.authenticate('local', {session: config.withSession}), function (req, res) {
     var username = req.body.username;
     var password = req.body.password;
+    console.log("user " + username + " tries to log in");
 
     Person.findOne({username: username}, function (err, user) {
         if (err) {

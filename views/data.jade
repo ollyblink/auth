@@ -12,7 +12,7 @@ block content
                         th FEV1
                         th FVC
                         //th
-                        th
+                        //th
                 tbody
                     each item in spirometryData
                         tr
@@ -22,5 +22,5 @@ block content
                             td #{item.fvc}
                             //td
                                 a(href="/data/updatedata/item/#{item.title}") update
-                            td
+                            //td
                                 a(href="/data/deletedata/user/#{ofUser}/item/#{item.title}") delete

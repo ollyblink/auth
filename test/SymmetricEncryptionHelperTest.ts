@@ -1,6 +1,6 @@
 /// <reference path="../typings/globals/mocha/index.d.ts" />
 //see also node-rsa
-import {SymmetricEncryptionHelper}  from '../security/SymmetricEncryptionHelper';
+import {SymmetricEncryptionHelper}  from '../utils/security/SymmetricEncryptionHelper';
 import {assert} from "chai";
 
 describe('SymmetricEncryptionHelper', ()=> {
