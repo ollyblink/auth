@@ -5,7 +5,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var security = require('./utils/security/securityhelper')
-var db = require('./models/db').getDB(require('./config/config').db.production);
+var db = require('./models/db').getDB(require('./config/config').db.prod);
 
 // Parse incoming request bodies under the req.body property
 var bodyParser = require('body-parser');

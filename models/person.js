@@ -6,6 +6,7 @@ var security = require('../utils/security/securityhelper');
 /**
  * Schema definition for a new user. It's not the same as the Account used to authenticate
  * (although the username is the same in both cases).
+ * The fields are explained in the @see storeUser function, see PersonSchema#storeUser
  */
 var PersonSchema = new Schema({
     username: {

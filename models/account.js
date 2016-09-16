@@ -2,14 +2,16 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var passportLocalMongoose = require('passport-local-mongoose');
 
+/***
+ * Account used for local strategy
+ */
 var Account = new Schema({
     username: {
         type: String,
         required: true
     },
     password: {
-        type: String,
-        required: true
+        type: String
     }
 });
 

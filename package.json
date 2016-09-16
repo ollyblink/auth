@@ -27,7 +27,8 @@
     "reflect-metadata": "^0.1.8",
     "request": "^2.74.0",
     "serve-favicon": "~2.3.0",
-    "should": "~2.1.0"
+    "should": "~2.1.0",
+    "sinon": "^1.17.5"
   },
   "devDependencies": {
     "mocha": "^3.0.2",

@@ -1,8 +1,8 @@
 var session = require('supertest-session');
-
+var data = require('../routes/data')
 var http = require('http');
 
-describe('loading express', function () {
+describe('Testing data routes', function () {
 
     var testSession;
     beforeEach(function () {
@@ -21,10 +21,11 @@ describe('loading express', function () {
     afterEach(function (done) {
         server.close(done);
     });
-    it('responds to /data/', function(done) {
+    it('responds to /data/showdata/o1', function(done) {
+        data.findDataForUser();
         testSession
             .get('/data/showdata/o1')
-            .expect(302 )
+            .expect(302)
             .end(done);
     });
 });

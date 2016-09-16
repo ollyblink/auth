@@ -90,12 +90,14 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
         //Decrypt the private key using the password in clear text
         var privateKey = security.symmetricDecrypt(user.privateKeyEnc, password);
         //Decrypt the encryption key using the decrypted private key
-        var encryptionKey = security.decryptStringWithRsaPrivateKey(user.encryptionKeyEnc, privateKey);
+         var encryptionKey = security.decryptStringWithRsaPrivateKey(user.encryptionKeyEnc, privateKey);
         //Store the private key in the session for later use
         req.session.privateKey = privateKey;
         //Store the encryption key in the session for later use
         req.session.encryptionKey = encryptionKey;
-        res.render('index', {user: username});
+
+        console.log("user " + username + " logged in");
+        res.status(200).json({user: username});
     });
 
 });

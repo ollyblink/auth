@@ -1,99 +1,94 @@
 var express = require('express');
 var passport = require('passport');
 var router = express.Router();
-
 var authentication = require('../utils/authentication/authenticationhelper');
 
 //Import the required models
 var Person = require('../models/person');
 var Consent = require('../models/consent');
 
-router.get('/grantdataaccess', authentication.isLoggedIn, function (req, res) {
+/**
+ * returns all users that data access can still be granted (all possible minus the ones that are already granted)
+ */
+router.get('/possibleconsents', authentication.isLoggedIn, function (req, res) {
     Person.find({
         username: {
             $ne: req.user.username
         }
     }, function (err, people) {
         if (err) {
-            console.error("Problem with grantdataaccess.");
-            res.render('/');
+            console.error(err);
+            res.status(500).json({error: err});
         }
-        var usernames = [];
+        var authorisableUsers = [];
         for (var i = 0; i < people.length; ++i) {
-            usernames.push(people[i].username);
+            authorisableUsers.push(people[i].username);
         }
         // //now remove all those where a consent already exists
-        getUsersWithoutAccess(req.user.username, usernames, res);
+        Consent.find().where('sender').equals(req.user.username).exec(function (err, consents) {
+            if (err) {
+                console.error(err);
+                res.status(500).json({error: err});
+            }
+            console.log("Possible users: [" + authorisableUsers.length + "]/" + authorisableUsers);
+            console.log("Consents found: [" + consents.length + "]/" + consents);
 
-    });
-});
-
-var getUsersWithoutAccess = function (username, possibleUserNames, res) {
-    Consent.find().where('sender').equals(username).exec(function (err, consents) {
-        if (err) {
-            console.error("Problem with getUsersWithoutAccess.");
-            res.render('/');
-        }
-        console.log("Possible users: [" + possibleUserNames.length + "]/" + possibleUserNames);
-        var all = "";
-        for (var i = 0; i < consents.length; ++i) {
-            all += consents[i].receiver + ", ";
-        }
-        console.log("Consents found: [" + consents.length + "]/" + all);
-
-        if (consents.length > 0) {
             for (var i = 0; i < consents.length; ++i) {
-                var index = possibleUserNames.indexOf(consents[i].receiver);
-                console.log("consent receiver[" + consents[i].receiver + "], at index ["+index+"]");
+                var index = authorisableUsers.indexOf(consents[i].receiver);
+                console.log("consent receiver[" + consents[i].receiver + "], at index [" + index + "]");
                 if (index >= 0) { // don't want to include those that we already granted access to the data
                     console.log("Found user [" + consents[i].receiver + "]");
-                    possibleUserNames.splice(index, 1);
+                    authorisableUsers.splice(index, 1);
                 }
             }
-        }
 
-        console.log("Remaining users to grant access to data to: [" + possibleUserNames.length + "]/" + possibleUserNames);
-
-        res.render('grantdataaccess', {user: username, usernames: possibleUserNames});
-
-    });
-}
-
-
-router.get('/allconsents', authentication.isLoggedIn, function (req, res) {
-    Consent.find().where('sender').equals(req.user.username).exec(function (err, consents) {
-        var grantedTo = [];
-        if (consents) {
-            for (var i = 0; i < consents.length; i++) {
-                grantedTo.push(consents[i]);
-            }
-        }
-        Consent.find().where('receiver').equals(req.user.username).exec(function (err2, consents2) {
-            var grantedBy = [];
-            if (consents2) {
-                for (var i = 0; i < consents2.length; i++) {
-                    grantedBy.push(consents2[i]);
-                }
-            }
-            console.log("Found: " + JSON.stringify(grantedTo));
-            console.log("Found: " + JSON.stringify(grantedBy));
-            res.render('consents', {grantedTo: grantedTo, grantedBy: grantedBy, user: req.user.username});
+            console.log("Remaining users to grant access to data to: [" + authorisableUsers.length + "]/" + authorisableUsers);
+            res.status(200).json({success: true, user: req.user.username, authorisableUsers: authorisableUsers});
         });
     });
 });
 
-/**
- * should be delete
- */
-router.get('/deleteconsent/consentid/:consentid', authentication.isLoggedIn, function (req, res) {
+
+router.get('/sentconsents', authentication.isLoggedIn, function (req, res) {
+    findConsents(req.user.username, 'sender', res);
+});
+
+router.get('/receivedconsents', authentication.isLoggedIn, function (req, res) {
+    findConsents(req.user.username, 'receiver', res);
+});
+
+var findConsents = function (user, userField, res) {
+    Consent.find().where(userField).equals(user).exec(function (err, consents) {
+        if (err) {
+            console.error(err);
+            res.status(500).json({success: false, message: err});
+        }
+        var consentedUsers = [];
+        if (consents) {
+            for (var i = 0; i < consents.length; i++) {
+                if (userField === 'receiver') {
+                    consentedUsers.push(consents[i].sender);
+                } else { //(if userField === 'sender')
+                    consentedUsers.push(consents[i].receiver);
+                }
+            }
+        }
+        console.log("Found: " + JSON.stringify(consentedUsers));
+        res.status(200).json({success: true, user: user, consentedUsers: consentedUsers});
+    });
+}
+
+router.delete('/deleteconsent/consentid/:consentid', authentication.isLoggedIn, function (req, res) {
     Consent.remove({_id: req.params.consentid}, function (err) {
         if (err) {
-            console.error("Could not remove consent with id: " + req.params.consentid);
+            res.status(500).json({success: false, message: err});
         }
         else {
-            console.error("Successfully removed consent with id: " + req.params.consentid);
+            res.status(200).json({
+                success: true,
+                message: "Successfully removed consent with id: " + req.params.consentid
+            });
         }
-        res.redirect("/consents/allconsents");
     });
 });
 
@@ -103,18 +98,19 @@ router.post('/grantdataaccess', authentication.isLoggedIn, function (req, res) {
      */
     Person.findOne({username: req.body.receiver}, function (err, person) {
         if (err) {
-            console.error("err: " + err.message);
-            res.redirect("/");
+            console.error(err);
+            res.status(500).json({success: false, message: err});
         }
-
         new Consent().createConsent(req.user.username, person.username, req.session.encryptionKey, person.publicKey, function (err, consent) {
             if (err) {
-                console.log("could not save new consent for user " + consent.receiver);
-                return console.error(err);
+                res.status(500).json({success: false, message: err});
             } else {
-                console.log("Successfully saved new consent for user " + consent.receiver);
+                res.status(200).json({
+                    success: true,
+                    message: "Successfully saved new consent for user " + consent.receiver,
+                    consentid: consent._id
+                });
             }
-            res.redirect('/consents/allconsents');
         });
 
     });

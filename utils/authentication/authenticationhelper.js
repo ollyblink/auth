@@ -1,3 +1,5 @@
+var config = require('../../config/config');
+
 module.exports = {
     /**
      * Checks if the user is authenticated or not.
@@ -7,9 +9,10 @@ module.exports = {
      * @param next invokes the next middleware functione
      */
     isLoggedIn: function (req, res, next) {
+
         if (!req.isAuthenticated()) {
             console.log("Not authenticated");
-            res.redirect("/login");
+            res.status(403).json({message: "Unauthorized"});
         } else {
             next();
         }

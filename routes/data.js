@@ -1,5 +1,4 @@
 var express = require('express');
-var passport = require('passport');
 var security = require('../utils/security/securityhelper');
 var authentication = require('../utils/authentication/authenticationhelper');
 var config = require("../config/config")
@@ -9,6 +8,7 @@ var router = express.Router();
 //Import the required models
 var Person = require('../models/person');
 var Consent = require('../models/consent');
+
 
 /**
  * Retrieves all data for a user specified by its username.
@@ -21,6 +21,10 @@ router.get('/showdata/:username', authentication.isLoggedIn, function (req, res)
     console.log("user: " + req.params.username);
     console.log("user in session: " + req.user.username);
 
+    findUser(req, res);
+});
+
+function findUser(req, res) {
     var userToFind;
     var encryptionKey;
 
@@ -33,7 +37,7 @@ router.get('/showdata/:username', authentication.isLoggedIn, function (req, res)
             .where('sender').equals(userToFind)
             .where('receiver').equals(req.user.username)
             .select('encryptionKeyEnc').exec(function (err, data) {
-             if (err) {
+            if (err) {
                 var errorMsg = "Error occurred while retrieving data for user " + userToFind;
                 console.log(errorMsg);
                 res.status(500).send(errorMsg);
@@ -45,7 +49,7 @@ router.get('/showdata/:username', authentication.isLoggedIn, function (req, res)
             } else {
                 var notFoundMsg = "Could not find matching consent for user " + userToFind;
                 console.error(notFoundMsg);
-                res.status(404).send(notFoundMsg);
+                res.status(404).json({message: notFoundMsg});
             }
         });
     } else { // no user name specified --> display own data
@@ -53,7 +57,7 @@ router.get('/showdata/:username', authentication.isLoggedIn, function (req, res)
         encryptionKey = req.session.encryptionKey;
         findDataForUser(userToFind, encryptionKey, res);
     }
-});
+}
 
 /**
  * Retrieves the data for a specified user (specified by username)
@@ -82,13 +86,13 @@ function findDataForUser(userToFind, encryptionKey, res) {
         }
         console.log("All data items found for user [" + userToFind + "]: " + JSON.stringify(decryptedData));
 
-        res.render("data", {spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
-
+        //res.render("data", {spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
+        res.status(200).json({spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
     });
 };
 
 /**
- * Renders a website to add a new data item
+ * Renders a website to add a new d ata item
  */
 router.get('/adddata', authentication.isLoggedIn, function (req, res) {
     res.render('adddata', {user: req.user.username});
@@ -121,53 +125,81 @@ router.delete('/deletedata/user/:user/item/:itemtitle', authentication.isLoggedI
         });
 });
 
+router.put('/spirometrydataitem', authentication.isLoggedIn, function (req, res) {
+    Person.findOne({username: req.user.username}).exec(function (err, user) {
+        if (err) {
+            console.log("an error occured: " + err.message);
+            res.status(500).send(err);
+        }
+        var itemtitle = req.body.itemtitle; //may only be set in case of an update
+
+        var title = req.body.title;
+        var fvc = req.body.fvc;
+        var fev1 = req.body.fev1;
+        var msg = "";
+        var status = 201;
+
+        for (var i = 0; i < user.spirometryData.length; ++i) {
+            var decryptedDataItem = security.symmetricDecrypt(user.spirometryData[i], req.session.encryptionKey);
+            var dataset = JSON.parse(decryptedDataItem);
+            if (dataset.title === itemtitle) {
+                console.log("update data: " + JSON.stringify(dataset));
+                dataset.title = title;
+                dataset.fvc = fvc;
+                dataset.fev1 = fev1;
+                console.log("enc key: " + req.session.encryptionKey);
+                //TODO sth is fishy here
+                var newEncryptedDataItem = security.symmetricEncrypt(JSON.stringify(dataset), req.session.encryptionKey);
+                user.splice(i, 1, newEncryptedDataItem); //Delete old data set and add new data set instead
+                user.save();
+                console.log(msg);
+                // res.redirect('/data/showdata/' + req.user.username);
+                msg = "Updated data item with title [" + dataset.title + "]";
+                status = 201;
+                break;
+            }
+        }
+
+        user.save();
+        console.log("to encrypt: " + JSON.stringify(toEncrypt));
+        console.log("encKey: " + req.session.encryptionKey);
+        console.log("encData: " + encryptedData);
+        if (msg.length == 0) {
+            msg = "Did not find item with title [" + itemtitle + "]";
+            status = 302;
+        }
+        res.status(status).json({"message": msg});
+
+    });
+});
 router.post('/spirometrydataitem', authentication.isLoggedIn, function (req, res) {
     Person.findOne({username: req.user.username}).exec(function (err, user) {
         if (err) {
             console.log("an error occured: " + err.message);
-            res.redirect("/");
+            res.status(500).send(err);
         }
-        var itemtitle = req.body.itemtitle; //may only be set in case of an update
 
         var title = req.body.title;
         var dateTime = new Date().toJSON();
         var fvc = req.body.fvc;
         var fev1 = req.body.fev1;
 
-        if (itemtitle) { //Update
-            for (var i = 0; i < user.spirometryData.length; ++i) {
-                var decryptedDataItem = security.symmetricDecrypt(user.spirometryData[i], req.session.encryptionKey);
-                var dataset = JSON.parse(decryptedDataItem);
-                if (dataset.title === itemtitle) {
-                    console.log("update data: " + JSON.stringify(dataset));
-                    dataset.title = title;
-                    dataset.fvc = fvc;
-                    dataset.fev1 = fev1;
-                    var newEncryptedDataItem = security.symmetricEncrypt(JSON.stringify(dataset), req.session.encryptionKey);
+        var toEncrypt = {
+            title: title,
+            dateTime: dateTime,
+            fvc: fvc,
+            fev1: fev1
+        };
+        var dataToEncrypt = JSON.stringify(toEncrypt);
+        var encryptedData = security.symmetricEncrypt(dataToEncrypt, req.session.encryptionKey);
+        user.spirometryData.push(encryptedData);
 
-                    user.splice(i, 1, newEncryptedDataItem); //Delete old data set and add new data set instead
-                    user.save();
-                    res.redirect('/data/showdata/' + req.user.username);
-                    break;
-                }
-            }
-        } else { //create new entry
-            var toEncrypt = {
-                title: title,
-                dateTime: dateTime,
-                fvc: fvc,
-                fev1: fev1
-            };
-            var dataToEncrypt = JSON.stringify(toEncrypt);
-            var encryptedData = security.symmetricEncrypt(dataToEncrypt, req.session.encryptionKey);
-            user.spirometryData.push(encryptedData);
-        }
         user.save();
         console.log("to encrypt: " + JSON.stringify(toEncrypt));
         console.log("encKey: " + req.session.encryptionKey);
         console.log("Datastring:" + dataToEncrypt);
         console.log("encData: " + encryptedData);
-        res.redirect('/data/showdata/' + req.user.username);
+        res.status(201).json({"message": "Successfully created item with title [" + title + "]"});
     });
 
 });

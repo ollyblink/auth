@@ -5,6 +5,11 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var security = require('../utils/security/securityhelper');
 
+/**
+ * A consent is required to allow another user to access own data items.
+ * To do so, the encryption key of the sending user is encrypted with the public key of the receiving user,
+ * so that only the receiving user can decrypt it using his or her private key
+ */
 var ConsentSchema = new Schema({
     sender: {
         type: String,
@@ -21,7 +26,7 @@ var ConsentSchema = new Schema({
 });
 
 //Make sure the consent can only exist once for each sender and receiver
-ConsentSchema.index({sender: 1, receiver: 1}, {unique: true});
+//ConsentSchema.index({sender: 1, receiver: 1}, {unique: true});
 
 /**
  * Creates a new consent. This means that receiver is able to read the data of sender.
@@ -34,9 +39,12 @@ ConsentSchema.index({sender: 1, receiver: 1}, {unique: true});
 ConsentSchema.methods.createConsent = function (sender, receiver, encryptionKey, publicKey, saveFunction) {
     //encrypt the user's encryption key with the public key of the receiver
     var encryptionKeyEnc = security.encryptStringWithRsaPublicKey(encryptionKey, publicKey);
-    this.sender = sender; //the person granting the consent
-    this.receiver = receiver; // the person being able to read data
-    this.encryptionKeyEnc = encryptionKeyEnc; // the encrypted encryption key of sender, encrypted with the public key of receiver
+    //the person granting the consent
+    this.sender = sender;
+    // the person being able to read data
+    this.receiver = receiver;
+    // the encrypted encryption key of sender, encrypted with the public key of receiver
+    this.encryptionKeyEnc = encryptionKeyEnc;
     this.save(saveFunction);
 };
 

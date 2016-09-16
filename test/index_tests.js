@@ -12,7 +12,7 @@ describe('loading express', function () {
     var testSession;
     beforeEach(function () {
         delete require.cache[require.resolve('../app')]; //needed to have a clear server with every unit test
-        config.db.production = config.db.test; // i do this to change the db. not so nice i know
+        config.db.prod  = config.db.test; // i do this to change the db. not so nice i know
 
         clearDB();
         var app = require('../app');
@@ -25,6 +25,7 @@ describe('loading express', function () {
         clearDB();
         server.close(done);
     });
+
     function clearDB() {
         for (var i in mongoose.connection.collections) {
             mongoose.connection.collections[i].remove(function () {

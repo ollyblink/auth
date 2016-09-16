@@ -73,7 +73,6 @@ describe('Consent#createConsent', function () {
                  expect(err.code).to.equal(11000); //Duplicate
                  console.log("Error: "+ err);
                  done();
-
              });
         });
     });
