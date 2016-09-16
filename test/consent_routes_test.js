@@ -12,24 +12,28 @@ var functionsToTest = require('../routes/consent');
 var should = require('should');
 var fs = require("fs");
 
-var server;
-var testSession = null;
 
-beforeEach(function () {
-    delete require.cache[require.resolve('../app')]; //needed to have a clear server with every unit test
-    config.db.prod = "mongodb://localhost/consent_routes_tests"; // i do this to change the db. not so nice i know
-    var app = require('../app');
-    server = http.createServer(app);
-    server.listen(3000);
-
-    testSession = session(app);
-
-});
-afterEach(function (done) {
-    server.close(done);
-});
-
+/**
+ * Todo: add more tests (especially error provoking ones...)
+ */
 describe('Grant Data Access', function () {
+
+    var server;
+    var testSession = null;
+
+    beforeEach(function () {
+        delete require.cache[require.resolve('../app')]; //needed to have a clear server with every unit test
+        config.db.prod = "mongodb://localhost/consent_routes_tests"; // i do this to change the db. not so nice i know
+        var app = require('../app');
+        server = http.createServer(app);
+        server.listen(3000);
+
+        testSession = session(app);
+
+    });
+    afterEach(function (done) {
+        server.close(done);
+    });
     it('should show all the possible users to grant access to, without oneself', function (done) {
         testSession.post('/login')
             .send({username: 'u1', password: "u1"})
@@ -110,7 +114,7 @@ describe('Grant Data Access', function () {
     });
     it('should add and then remove a consent again', function (done) {
         testSession.post('/login')
-            .send({username: 'u1', password: "u1"})
+            .send({username: 'u4', password: "u4"})
             .expect(200)
             .end(function (err, res) {
                 testSession
@@ -120,15 +124,14 @@ describe('Grant Data Access', function () {
                     .end(function (err, res) {
                         expect(res.body.success).to.equal(true);
                         expect(res.body.message).to.equal('Successfully saved new consent for user u3');
-                        expect(res.body.consentid).to.exist;
-                        var consentid = res.body.consentid;
+                        expect(res.body.receiver).to.equal('u3');
                         testSession
-                            .delete('/consents/deleteconsent/consentid/' + consentid)
+                            .delete('/consents/deleteconsent/sender/u4/receiver/u3')
                             .send({receiver: 'u3'})
                             .expect(200)
                             .end(function (err, res) {
                                 expect(res.body.success).to.equal(true);
-                                expect(res.body.message).to.equal('Successfully removed consent with id: ' + consentid);
+                                expect(res.body.message).to.equal('Successfully removed consent with sender u4 and receiver u3');
                                 done();
                             });
                     });

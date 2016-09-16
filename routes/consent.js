@@ -48,11 +48,16 @@ router.get('/possibleconsents', authentication.isLoggedIn, function (req, res) {
     });
 });
 
-
+/**
+ * Returns all users that can access my data
+ */
 router.get('/sentconsents', authentication.isLoggedIn, function (req, res) {
     findConsents(req.user.username, 'sender', res);
 });
 
+/**
+ * Returns all users that this user has data access to
+ */
 router.get('/receivedconsents', authentication.isLoggedIn, function (req, res) {
     findConsents(req.user.username, 'receiver', res);
 });
@@ -78,20 +83,30 @@ var findConsents = function (user, userField, res) {
     });
 }
 
-router.delete('/deleteconsent/consentid/:consentid', authentication.isLoggedIn, function (req, res) {
-    Consent.remove({_id: req.params.consentid}, function (err) {
+/**
+ * Deletes a consens for a specified receiver
+ */
+router.delete('/deleteconsent/sender/:sender/receiver/:receiver', authentication.isLoggedIn, function (req, res) {
+    if (req.params.sender !== req.user.username) {
+        res.status(403).json({success: false, message: "Not allowed to delete specified item"});
+    }
+    Consent.remove({sender: req.user.username, receiver: req.params.receiver}, function (err) {
         if (err) {
             res.status(500).json({success: false, message: err});
         }
         else {
             res.status(200).json({
                 success: true,
-                message: "Successfully removed consent with id: " + req.params.consentid
+                message: "Successfully removed consent with sender " + req.user.username + " and receiver " + req.params.receiver
             });
         }
     });
 });
 
+
+/**
+ * Creates a new consent for a specified receiver
+ */
 router.post('/grantdataaccess', authentication.isLoggedIn, function (req, res) {
     /*
      * Get the other user's public key to encrypt this person's encryption key
@@ -108,11 +123,10 @@ router.post('/grantdataaccess', authentication.isLoggedIn, function (req, res) {
                 res.status(200).json({
                     success: true,
                     message: "Successfully saved new consent for user " + consent.receiver,
-                    consentid: consent._id
+                    receiver: consent.receiver
                 });
             }
         });
-
     });
 
 });

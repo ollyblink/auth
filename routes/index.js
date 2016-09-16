@@ -3,41 +3,20 @@ var passport = require('passport');
 var mongoose = require('mongoose');
 var security = require('../utils/security/securityhelper');
 var config = require("../config/config")
-
 var router = express.Router();
-
-
 //Import the required models
 var Account = require('../models/account');
 var Person = require('../models/person');
-
-/**
- * Register a new user
- */
-router.get('/register', function (req, res) {
-    res.render('register', {});
-});
-
-/**
- * Base path redirects to login
- */
-router.get('/', function (req, res) {
-    res.redirect('/login');
-});
-
-/**
- * login page. User needs to be registered first.
- */
-router.get('/login', function (req, res) {
-    res.render('login');
-});
 
 /**
  * log out. Redirects to login
  */
 router.get('/logout', function (req, res) {
     req.logout();
-    res.redirect('/login');
+    res.status(200).json({
+        success:true,
+        message:"Successfully logged out"
+    });
 });
 
 
@@ -56,17 +35,20 @@ router.post('/register', function (req, res) {
 
     Account.register(new Account({username: username}), password, function (err, account) {
         if (err) {
-            console.log("Error while registering user.", err);
-            return res.render('register', {account: account});
+            console.error(err);
+            res.status(500).json({success: false, message: err});
         }
         new Person().storeUser(username, password, function (err, person) {
             if (err) {
-                console.error("could not save new person with name " + person.username, err);
-                res.redirect("/register");
+                console.error(err);
+                res.status(500).json({success: false, message: err});
             } else {
                 console.log("Successfully saved new person with username " + person.username);
                 passport.authenticate('local')(req, res, function () {
-                    res.redirect("/");
+                    res.status(200).json({
+                        sucess: true,
+                        message: "Successfully created user with username " + username
+                    });
                 });
             }
         });
@@ -84,13 +66,13 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
 
     Person.findOne({username: username}, function (err, user) {
         if (err) {
-            console.error("Could not find user with username: " + username);
-            res.redirect('/login');
+            console.error(err);
+            res.status(500).json({success: false, message: err});
         }
         //Decrypt the private key using the password in clear text
         var privateKey = security.symmetricDecrypt(user.privateKeyEnc, password);
         //Decrypt the encryption key using the decrypted private key
-         var encryptionKey = security.decryptStringWithRsaPrivateKey(user.encryptionKeyEnc, privateKey);
+        var encryptionKey = security.decryptStringWithRsaPrivateKey(user.encryptionKeyEnc, privateKey);
         //Store the private key in the session for later use
         req.session.privateKey = privateKey;
         //Store the encryption key in the session for later use
