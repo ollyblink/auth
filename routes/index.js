@@ -46,7 +46,7 @@ router.post('/register', function (req, res) {
                 console.log("Successfully saved new person with username " + person.username);
                 passport.authenticate('local')(req, res, function () {
                     res.status(200).json({
-                        sucess: true,
+                        success: true,
                         message: "Successfully created user with username " + username
                     });
                 });

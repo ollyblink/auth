@@ -1,14 +1,9 @@
-var request = require('supertest');
 var jade = require('jade');
 var session = require('supertest-session');
 var config = require('../config/config');
 var mongoose = require('mongoose');
 var http = require('http');
 var expect = require('chai').expect;
-var Person = require('../models/person');
-var Account = require('../models/account');
-var security = require('../utils/security/securityhelper');
-var functionsToTest = require('../routes/consent');
 var should = require('should');
 var fs = require("fs");
 
@@ -42,7 +37,6 @@ describe('Data', function () {
                     expect(res.body.message).to.equal("Unauthorized");
                     done();
                 });
-
         });
         it('should be possible to retrieve the data for oneself if logged in', function (done) {
             testSession.post('/login')

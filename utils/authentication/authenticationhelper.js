@@ -9,7 +9,6 @@ module.exports = {
      * @param next invokes the next middleware functione
      */
     isLoggedIn: function (req, res, next) {
-
         if (!req.isAuthenticated()) {
             console.log("Not authenticated");
             res.status(403).json({message: "Unauthorized"});

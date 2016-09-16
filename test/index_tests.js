@@ -7,12 +7,12 @@ var should = require('should');
 var Person = require('../models/person');
 var Account = require('../models/account');
 
-describe('loading express', function () {
+describe('Index test', function () {
     var server;
     var testSession;
     beforeEach(function () {
         delete require.cache[require.resolve('../app')]; //needed to have a clear server with every unit test
-        config.db.prod  = config.db.test; // i do this to change the db. not so nice i know
+        config.db.prod = config.db.test; // i do this to change the db. not so nice i know
 
         clearDB();
         var app = require('../app');
@@ -35,11 +35,13 @@ describe('loading express', function () {
 
     describe('Registering and login', function () {
         it('it should be possible to add a new user', function (done) {
-            this.timeout(10000); //may take time to create the PKI
+            this.timeout(50000); //may take time to create the PKI
             testSession
                 .post('/register')
                 .send({username: 'u1', password: 'u1'})
-                .expect(302).end(function (err, res) {
+                .expect(200).end(function (err, res) {
+                expect(res.body.success).to.equal(true);
+                expect(res.body.message).to.equal("Successfully created user with username u1");
                 Person.findOne({username: 'u1'}, function (err, person) {
                     if (err) {
                         console.err("Error occured: " + err);
@@ -49,7 +51,6 @@ describe('loading express', function () {
                         should.fail("no person found!");
                     } else {
                         console.log("found person!");
-
                         expect(person.username).to.equal('u1');
                         expect(person.publicKey).to.exist; // cannot say more about it
                         expect(person.privateKeyEnc).to.exist; // cannot say more about it
@@ -75,7 +76,10 @@ describe('loading express', function () {
                                 .post('/login')
                                 .send({username: 'u1', password: 'u1'})
                                 .expect(200)
-                                .end(done);
+                                .end(function(err, res){
+                                    expect(res.body.user).to.equal('u1');
+                                    done();
+                                });
                         } else {
                             should.fail("got an error: " + err);
                         }
