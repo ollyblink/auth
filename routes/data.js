@@ -8,6 +8,7 @@ var router = express.Router();
 //Import the required models
 var Person = require('../models/person');
 var Consent = require('../models/consent');
+var errorchecker = require('../utils/error/errorhelper');
 
 
 /**
@@ -16,7 +17,7 @@ var Consent = require('../models/consent');
  * Else, it needs to be checked if the requesting user is allowed to access the data item of the user. For this,
  * a consent needs to exist, which is checked first.
  */
-router.get('/showdata/username/:username', authentication.isLoggedIn, function (req, res) {
+router.get('/username/:username', authentication.isLoggedIn, function (req, res) {
     console.log("key: " + req.session.encryptionKey);
     console.log("user: " + req.params.username);
     console.log("user in session: " + req.user.username);
@@ -33,21 +34,20 @@ router.get('/showdata/username/:username', authentication.isLoggedIn, function (
             .where('sender').equals(userToFind)
             .where('receiver').equals(req.user.username)
             .select('encryptionKeyEnc').exec(function (err, data) {
-            if (err) {
-                var errorMsg = "Error occurred while retrieving data for user " + userToFind;
-                console.log(errorMsg);
-                res.status(500).json({success: false, message: errorMsg});
+            errorchecker.check(err);
+
+            if (data) {
+                encryptionKey = security.decryptStringWithRsaPrivateKey(data.encryptionKeyEnc, req.session.privateKey);
+                console.log("decrypted enc key " + encryptionKey);
+                findDataForUser(userToFind, encryptionKey, res);
             } else {
-                if (data) {
-                    encryptionKey = security.decryptStringWithRsaPrivateKey(data.encryptionKeyEnc, req.session.privateKey);
-                    console.log("decrypted enc key " + encryptionKey);
-                    findDataForUser(userToFind, encryptionKey, res);
-                } else {
-                    var notFoundMsg = "Could not find matching consent for user " + userToFind;
-                    console.error(notFoundMsg);
-                    res.status(404).json({success: false, message: notFoundMsg});
-                }
+                var notFoundMsg = "Could not find matching consent for user " + userToFind;
+                console.error(notFoundMsg);
+                res.status(404).json({
+                    message: notFoundMsg
+                });
             }
+
         });
     } else { // no user name specified --> display own data
         userToFind = req.params.username;
@@ -70,10 +70,8 @@ function findDataForUser(userToFind, encryptionKey, res) {
         .where('username').equals(userToFind)
         .select('spirometryData').exec(function (err, data) {
 
-        if (err) {
-            console.error(err);
-            res.status(500).json({success: false, message: err});
-        }
+        errorchecker.check(err);
+
         console.log("Found data for user[" + userToFind + "]");
         var decryptedData = [];
         for (var i = 0; i < data.spirometryData.length; ++i) {
@@ -84,12 +82,14 @@ function findDataForUser(userToFind, encryptionKey, res) {
         console.log("All data items found for user [" + userToFind + "]: " + JSON.stringify(decryptedData));
 
         //res.render("data", {spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
-        res.status(200).json({success: true, user: userToFind, spirometryData: decryptedData});
+        res.status(200).json({
+            user: userToFind,
+            spirometryData: decryptedData});
     });
 };
 
 
-router.delete('/deletedata/user/:user/item/:itemtitle', authentication.isLoggedIn, function (req, res) {
+router.delete('/user/:user/item/:itemtitle', authentication.isLoggedIn, function (req, res) {
     //Can only remove if the user is the same as the logged in user
     if (req.params.user !== req.user.username) {
         res.status(403).json({success: false, message: "Not allowed to delete specified item"});
@@ -99,10 +99,8 @@ router.delete('/deletedata/user/:user/item/:itemtitle', authentication.isLoggedI
     console.log("user: " + username);
 
     Person.findOne({username: username}).exec(function (err, user) {
-        if (err) {
-            console.error(err);
-            res.status(500).json({success: false, message: err});
-        }
+        errorchecker.check(err);
+
         console.log("#data items: " + user.spirometryData.length);
         for (var i = 0; i < user.spirometryData.length; ++i) {
             var decryptedDataItem = security.symmetricDecrypt(user.spirometryData[i], req.session.encryptionKey);
@@ -114,25 +112,19 @@ router.delete('/deletedata/user/:user/item/:itemtitle', authentication.isLoggedI
             }
         }
         user.save(function (err, user) {
-            if (err) {
-                res.status(500).json({success: false, message: err});
-            }
-            else {
-                res.status(200).json({
-                    success: true,
-                    message: "Successfully removed data item with title [" + req.params.itemtitle + "] for user " + username
-                });
-            }
+            errorchecker.check(err);
+
+            res.status(200).json({
+                message: "Successfully removed data item with title [" + req.params.itemtitle + "] for user " + username
+            });
         });
     });
 });
 
-router.post('/spirometrydataitem', authentication.isLoggedIn, function (req, res) {
+router.post('/', authentication.isLoggedIn, function (req, res) {
     Person.findOne({username: req.user.username}).exec(function (err, user) {
-        if (err) {
-            console.error(err);
-            res.status(500).json({success: false, message: err});
-        }
+        errorchecker.check(err);
+
 
         var title = req.body.title;
         var dateTime = new Date().toJSON();
@@ -150,16 +142,17 @@ router.post('/spirometrydataitem', authentication.isLoggedIn, function (req, res
         user.spirometryData.push(encryptedData);
 
         user.save(function (err, user) {
-            if (err) {
-                console.error(err);
-                res.status(500).json({success: false, message: err});
-            } else {
-                console.log("to encrypt: " + JSON.stringify(toEncrypt));
-                console.log("encKey: " + req.session.encryptionKey);
-                console.log("Datastring:" + dataToEncrypt);
-                console.log("encData: " + encryptedData);
-                res.status(201).json({success: true, message: "Successfully stored item with title " + title});
-            }
+            errorchecker.check(err);
+
+
+            console.log("to encrypt: " + JSON.stringify(toEncrypt));
+            console.log("encKey: " + req.session.encryptionKey);
+            console.log("Datastring:" + dataToEncrypt);
+            console.log("encData: " + encryptedData);
+            res.status(201).json({
+                message: "Successfully stored item with title " + title
+            });
+
         });
     });
 });

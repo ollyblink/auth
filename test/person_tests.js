@@ -22,7 +22,7 @@ describe('Person#storeUser', function () {
         }
 
         if (mongoose.connection.readyState === 0) {
-            mongoose.connect(config.db.test, function (err) {
+            mongoose.connect('mongodb://localhost/testdb1', function (err) {
                 if (err) {
                     throw err;
                 }
@@ -34,12 +34,12 @@ describe('Person#storeUser', function () {
     });
 
     afterEach(function (done) {
-        mongoose.disconnect();
+        mongoose.connection.close();
         return done();
     });
 
     it('should create a new user u1 and all associated keys', function (done) {
-        this.timeout(10000); //may take time to create the PKI
+        this.timeout(20000); //may take time to create the PKI
         var username = "u1";
         var password = "u1";
         new Person().storeUser(username, password, function (err, person) {
@@ -59,13 +59,13 @@ describe('Person#storeUser', function () {
         });
     });
     it('should not be possible to create two users with the same username', function (done) {
-        this.timeout(20000); //may take time to create the PKI
+        this.timeout(60000); //may take time to create the PKI
         var username = "u1";
         var password = "u1";
         new Person().storeUser(username, password, function (err, person) {
             new Person().storeUser(username, password, function (err, person) {
                 expect(err.code).to.equal(11000); //Duplicate
-                console.log("Error: "+ err);
+                console.log("Error: " + err);
                 done();
             });
         });

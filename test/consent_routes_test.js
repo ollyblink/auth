@@ -14,7 +14,8 @@ var fs = require("fs");
 
 
 /**
- * Todo: add more tests (especially error provoking ones...)
+ * Tests for consent routes
+ * Note: this requires the create_test_db.js to be run first, which will populate a database with test data.
  */
 describe('Grant Data Access', function () {
 
@@ -31,16 +32,19 @@ describe('Grant Data Access', function () {
         testSession = session(app);
 
     });
+
     afterEach(function (done) {
         server.close(done);
+        mongoose.connection.close();
     });
     it('should show all the possible users to grant access to, without oneself', function (done) {
+        this.timeout(5000); //may take time to create the PKI
         testSession.post('/login')
             .send({username: 'u1', password: "u1"})
             .expect(200)
             .end(function (err, res) {
                 testSession
-                    .get('/consents/possibleconsents')
+                    .get('/consents/')
                     .expect(200)
                     .end(function (err, res) {
                         expect(res.body.success).to.equal(true);
@@ -66,7 +70,7 @@ describe('Grant Data Access', function () {
             .expect(200)
             .end(function (err, res) {
                 testSession
-                    .get('/consents/sentconsents')
+                    .get('/consents/sent')
                     .expect(200)
                     .end(function (err, res) {
                         expect(res.body.success).to.equal(true);
@@ -92,7 +96,7 @@ describe('Grant Data Access', function () {
             .expect(200)
             .end(function (err, res) {
                 testSession
-                    .get('/consents/receivedconsents')
+                    .get('/consents/received')
                     .expect(200)
                     .end(function (err, res) {
                         expect(res.body.success).to.equal(true);
@@ -118,7 +122,7 @@ describe('Grant Data Access', function () {
             .expect(200)
             .end(function (err, res) {
                 testSession
-                    .post('/consents/grantdataaccess')
+                    .post('/consents/')
                     .send({receiver: 'u3'})
                     .expect(200)
                     .end(function (err, res) {
@@ -126,7 +130,7 @@ describe('Grant Data Access', function () {
                         expect(res.body.message).to.equal('Successfully saved new consent for user u3');
                         expect(res.body.receiver).to.equal('u3');
                         testSession
-                            .delete('/consents/deleteconsent/sender/u4/receiver/u3')
+                            .delete('/consents/sender/u4/receiver/u3')
                             .send({receiver: 'u3'})
                             .expect(200)
                             .end(function (err, res) {

@@ -20,7 +20,7 @@ describe('Encryption/Decryption', function () {
     });
 
     describe('#asymmetric', function () {
-        this.timeout(10000); //may take time to create the PKI
+        this.timeout(20000); //may take time to create the PKI
 
         it('should encrypt a data item using an asymmetric RSA key pair, and then decrypt it again, such that the decrypted data is the same as the input', function (done) {
             var x = security.createKeyPair();

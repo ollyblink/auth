@@ -7,7 +7,10 @@ var expect = require('chai').expect;
 var should = require('should');
 var fs = require("fs");
 
-
+/**
+ * Tests for data retrieval
+ * Note: this requires the create_test_db.js to be run first, which will populate a database with test data.
+ */
 describe('Data', function () {
 
     var server;
@@ -18,11 +21,13 @@ describe('Data', function () {
         config.db.prod = "mongodb://localhost/consent_routes_tests"; // i do this to change the db. not so nice i know
         var app = require('../app');
         server = http.createServer(app);
-        server.listen(3000);
+        server.listen(3003);
         testSession = session(app);
 
     });
     afterEach(function (done) {
+
+        mongoose.connection.close();
         server.close(done);
     });
     /**
@@ -31,7 +36,7 @@ describe('Data', function () {
     describe('Get Data', function () {
         it('should NOT be possible to retrieve the data for oneself if not logged in', function (done) {
             testSession
-                .get('/data/showdata/username/u1')
+                .get('/data/username/u1')
                 .expect(403)
                 .end(function (err, res) {
                     expect(res.body.message).to.equal("Unauthorized");
@@ -44,7 +49,7 @@ describe('Data', function () {
                 .expect(200)
                 .end(function (err, res) {
                     testSession
-                        .get('/data/showdata/username/u1')
+                        .get('/data/username/u1')
                         .expect(200)
                         .end(function (err, res) {
                             expect(res.body.success).to.equal(true);
@@ -61,7 +66,7 @@ describe('Data', function () {
                 .expect(200)
                 .end(function (err, res) {
                     testSession
-                        .get('/data/showdata/username/u2')
+                        .get('/data/username/u2')
                         .expect(200)
                         .end(function (err, res) {
                             expect(res.body.success).to.equal(true);
@@ -78,7 +83,7 @@ describe('Data', function () {
                 .expect(200)
                 .end(function (err, res) {
                     testSession
-                        .get('/data/showdata/username/u3')
+                        .get('/data/username/u3')
                         .expect(404)
                         .end(function (err, res) {
                             expect(res.body.success).to.equal(false);
@@ -97,7 +102,7 @@ describe('Data', function () {
                 .expect(200)
                 .end(function (err, res) {
                     testSession
-                        .post('/data/spirometrydataitem')
+                        .post('/data/')
                         .send({
                             title: "data_test",
                             fvc: 100,
@@ -108,7 +113,7 @@ describe('Data', function () {
                             expect(res.body.success).to.equal(true);
                             expect(res.body.message).to.equal("Successfully stored item with title data_test");
                             testSession
-                                .delete("/data/deletedata/user/u1/item/data_test")
+                                .delete("/data/user/u1/item/data_test")
                                 .expect(200)
                                 .end(function (err, res) {
                                     console.log(res.body.message);

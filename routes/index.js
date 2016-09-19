@@ -7,6 +7,7 @@ var router = express.Router();
 //Import the required models
 var Account = require('../models/account');
 var Person = require('../models/person');
+var errorchecker = require('../utils/error/errorhelper');
 
 /**
  * log out. Redirects to login
@@ -14,7 +15,6 @@ var Person = require('../models/person');
 router.get('/logout', function (req, res) {
     req.logout();
     res.status(200).json({
-        success:true,
         message:"Successfully logged out"
     });
 });
@@ -34,19 +34,19 @@ router.post('/register', function (req, res) {
     var password = req.body.password;
 
     Account.register(new Account({username: username}), password, function (err, account) {
-        if (err) {
-            console.error(err);
-            res.status(500).json({success: false, message: err});
-        }
+        errorchecker.check(err);
         new Person().storeUser(username, password, function (err, person) {
             if (err) {
                 console.error(err);
-                res.status(500).json({success: false, message: err});
+                res.status(err.status || 500);
+                res.json({
+                    message: err.message,
+                    error: err
+                });
             } else {
                 console.log("Successfully saved new person with username " + person.username);
                 passport.authenticate('local')(req, res, function () {
                     res.status(200).json({
-                        success: true,
                         message: "Successfully created user with username " + username
                     });
                 });
@@ -65,10 +65,8 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
     console.log("user " + username + " tries to log in");
 
     Person.findOne({username: username}, function (err, user) {
-        if (err) {
-            console.error(err);
-            res.status(500).json({success: false, message: err});
-        }
+        errorchecker.check(err);
+
         //Decrypt the private key using the password in clear text
         var privateKey = security.symmetricDecrypt(user.privateKeyEnc, password);
         //Decrypt the encryption key using the decrypted private key
@@ -79,7 +77,9 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
         req.session.encryptionKey = encryptionKey;
 
         console.log("user " + username + " logged in");
-        res.status(200).json({user: username});
+        res.status(200).json({
+            user: username
+        });
     });
 
 });

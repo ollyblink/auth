@@ -1,5 +1,5 @@
 /**
- *
+ * Clears an existing database and creates new datasets to be used in tests
  * */
 var counter = 0;
 var security = require('../utils/security/securityhelper');
@@ -13,11 +13,20 @@ config.db.prod = "mongodb://localhost/consent_routes_tests"; // i do this to cha
 var fs = require("fs");
 
 var db = require('../models/db').getDB("mongodb://localhost/consent_routes_tests");
+var mongoose = require('mongoose');
+
 
 var public = fs.readFileSync('./test/public.txt')
 var private = fs.readFileSync('./test/private.txt')
 var encryptionKey = "1234";
 var nrOfAccounts = 10;
+
+/** Used to count all creations... to exit the application when finished*/
+var counts = 0;
+/** How many consents (see defined below*/
+var nrOfConsents = 10;
+/** 30 */
+var MAX_COUNTS = nrOfAccounts + nrOfAccounts + nrOfConsents;
 
 function clearDB() {
     for (var i in mongoose.connection.collections) {
@@ -28,16 +37,22 @@ function clearDB() {
 var saveFunct = function (err, consent) {
     if (err) {
         console.error(err);
-    } else {
-        console.log("Saved");
     }
+    //Add count and if enough, exit applications
+    counts++;
+    console.log("Created " + counts + "/" + MAX_COUNTS + " data items.");
+    if (counts == MAX_COUNTS) {
+        console.log("Finished creation of test db");
+        process.exit(1);
+    }
+
 };
 
 
 clearDB();
+
 for (var i = 1; i <= nrOfAccounts; ++i) {
     var username = "u" + i;
-    console.log(i);
     Account.register(new Account({username: username}), username, saveFunct);
 
     var person = new Person();

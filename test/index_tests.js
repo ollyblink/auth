@@ -17,7 +17,7 @@ describe('Index test', function () {
         clearDB();
         var app = require('../app');
         server = http.createServer(app);
-        server.listen(3000);
+        server.listen(3001);
 
         testSession = session(app);
     });
@@ -31,6 +31,7 @@ describe('Index test', function () {
             mongoose.connection.collections[i].remove(function () {
             });
         }
+        mongoose.connection.close();
     }
 
     describe('Registering and login', function () {
@@ -45,7 +46,7 @@ describe('Index test', function () {
                 Person.findOne({username: 'u1'}, function (err, person) {
                     if (err) {
                         console.err("Error occured: " + err);
-                        should.fail("no person found!");
+                        should.fail(err);
                     }
                     if (!person) {
                         should.fail("no person found!");
@@ -65,7 +66,7 @@ describe('Index test', function () {
         });
 
         it('it should be possible to log in', function (done) {
-            this.timeout(10000); //may take time to create the PKI
+            this.timeout(20000); //may take time to create the PKI
             var username = 'u1', password = 'u1';
             Account.register(new Account({username: username}), password, function (err, account) {
                 if (!err) {
@@ -76,16 +77,19 @@ describe('Index test', function () {
                                 .post('/login')
                                 .send({username: 'u1', password: 'u1'})
                                 .expect(200)
-                                .end(function(err, res){
+                                .end(function (err, res) {
+                                    if(err){
+                                        should.fail(err);
+                                    }
                                     expect(res.body.user).to.equal('u1');
                                     done();
                                 });
                         } else {
-                            should.fail("got an error: " + err);
+                            should.fail(err);
                         }
                     });
                 } else {
-                    should.fail("got an error: " + err);
+                    should.fail(err);
                 }
             });
         });
