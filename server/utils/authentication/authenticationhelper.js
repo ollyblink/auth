@@ -9,9 +9,11 @@ module.exports = {
      * @param next invokes the next middleware functione
      */
     isLoggedIn: function (req, res, next) {
+        console.log("isLoggedIn:" + req.cookies['connect.sid'])
+
         if (!req.isAuthenticated()) {
             console.log("Not authenticated");
-            res.status(403).json({message: "Unauthorized"});
+            res.status(401).json({message: "Unauthorized"});
         } else {
             next();
         }

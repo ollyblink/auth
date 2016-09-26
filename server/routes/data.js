@@ -10,6 +10,26 @@ var Person = require('../models/person');
 var Consent = require('../models/consent');
 var errorchecker = require('../utils/error/errorhelper');
 
+router.get('/heroes', function (req, res) {
+    res.status(200).json({
+        heroes: [
+            {id: 11, name: 'Mr. Nice'},
+            {id: 12, name: 'Narco'},
+            {id: 13, name: 'Bombasto'},
+            {id: 14, name: 'Celeritas'},
+            {id: 15, name: 'Magneta'},
+            {id: 16, name: 'RubberMan'},
+            {id: 17, name: 'Dynama'},
+            {id: 18, name: 'Dr IQ'},
+            {id: 19, name: 'Magma'},
+            {id: 20, name: 'Tornado'}
+        ]
+    });
+});
+
+router.get('/message', function (req, res) {
+    res.status(200).json({message: "Hello World"});
+});
 
 /**
  * Retrieves all data for a user specified by its username.
@@ -18,7 +38,7 @@ var errorchecker = require('../utils/error/errorhelper');
  * a consent needs to exist, which is checked first.
  */
 router.get('/username/:username', authentication.isLoggedIn, function (req, res) {
-    console.log("key: " + req.session.encryptionKey);
+     console.log("key: " + req.session.encryptionKey);
     console.log("user: " + req.params.username);
     console.log("user in session: " + req.user.username);
 
@@ -34,7 +54,7 @@ router.get('/username/:username', authentication.isLoggedIn, function (req, res)
             .where('sender').equals(userToFind)
             .where('receiver').equals(req.user.username)
             .select('encryptionKeyEnc').exec(function (err, data) {
-            errorchecker.check(err);
+            errorchecker.check(err,res);
 
             if (data) {
                 encryptionKey = security.decryptStringWithRsaPrivateKey(data.encryptionKeyEnc, req.session.privateKey);
@@ -70,7 +90,7 @@ function findDataForUser(userToFind, encryptionKey, res) {
         .where('username').equals(userToFind)
         .select('spirometryData').exec(function (err, data) {
 
-        errorchecker.check(err);
+        errorchecker.check(err,res);
 
         console.log("Found data for user[" + userToFind + "]");
         var decryptedData = [];
@@ -84,7 +104,8 @@ function findDataForUser(userToFind, encryptionKey, res) {
         //res.render("data", {spirometryData: decryptedData, ofUser: userToFind, user: userToFind});
         res.status(200).json({
             user: userToFind,
-            spirometryData: decryptedData});
+            spirometryData: decryptedData
+        });
     });
 };
 
@@ -99,7 +120,7 @@ router.delete('/user/:user/item/:itemtitle', authentication.isLoggedIn, function
     console.log("user: " + username);
 
     Person.findOne({username: username}).exec(function (err, user) {
-        errorchecker.check(err);
+        errorchecker.check(err,res);
 
         console.log("#data items: " + user.spirometryData.length);
         for (var i = 0; i < user.spirometryData.length; ++i) {
@@ -112,7 +133,7 @@ router.delete('/user/:user/item/:itemtitle', authentication.isLoggedIn, function
             }
         }
         user.save(function (err, user) {
-            errorchecker.check(err);
+            errorchecker.check(err,res);
 
             res.status(200).json({
                 message: "Successfully removed data item with title [" + req.params.itemtitle + "] for user " + username
@@ -123,7 +144,7 @@ router.delete('/user/:user/item/:itemtitle', authentication.isLoggedIn, function
 
 router.post('/', authentication.isLoggedIn, function (req, res) {
     Person.findOne({username: req.user.username}).exec(function (err, user) {
-        errorchecker.check(err);
+        errorchecker.check(err,res);
 
 
         var title = req.body.title;
@@ -142,7 +163,7 @@ router.post('/', authentication.isLoggedIn, function (req, res) {
         user.spirometryData.push(encryptedData);
 
         user.save(function (err, user) {
-            errorchecker.check(err);
+            errorchecker.check(err,res);
 
 
             console.log("to encrypt: " + JSON.stringify(toEncrypt));

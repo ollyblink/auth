@@ -16,14 +16,14 @@ router.get('/', authentication.isLoggedIn, function (req, res) {
             $ne: req.user.username
         }
     }, function (err, people) {
-        errorchecker.check(err);
+        errorchecker.check(err, res);
         var authorisableUsers = [];
         for (var i = 0; i < people.length; ++i) {
             authorisableUsers.push(people[i].username);
         }
         // //now remove all those where a consent already exists
         Consent.find().where('sender').equals(req.user.username).exec(function (err, consents) {
-            errorchecker.check(err);
+            errorchecker.check(err, res);
 
             console.log("Possible users: [" + authorisableUsers.length + "]/" + authorisableUsers);
             console.log("Consents found: [" + consents.length + "]/" + consents);
@@ -64,7 +64,7 @@ router.get('/received', authentication.isLoggedIn, function (req, res) {
 
 var findConsents = function (user, userField, res) {
     Consent.find().where(userField).equals(user).exec(function (err, consents) {
-        errorchecker.check(err);
+        errorchecker.check(err, res);
 
         var consentedUsers = [];
         if (consents) {
@@ -92,7 +92,7 @@ router.delete('/sender/:sender/receiver/:receiver', authentication.isLoggedIn, f
         res.status(403).json({success: false, message: "Not allowed to delete specified item"});
     }
     Consent.remove({sender: req.user.username, receiver: req.params.receiver}, function (err) {
-        errorchecker.check(err);
+        errorchecker.check(err, res);
 
         res.status(200).json({
             message: "Successfully removed consent with sender " + req.user.username + " and receiver " + req.params.receiver
@@ -105,27 +105,44 @@ router.delete('/sender/:sender/receiver/:receiver', authentication.isLoggedIn, f
  * Creates a new consent for a specified receiver
  */
 router.post('/', authentication.isLoggedIn, function (req, res) {
-    /*
-     * Get the other user's public key to encrypt this person's encryption key
-     */
-    Person.findOne({username: req.body.receiver}, function (err, person) {
-        errorchecker.check(err);
-        if (person) {
-            new Consent().createConsent(req.user.username, person.username, req.session.encryptionKey, person.publicKey, function (err, consent) {
-                errorchecker.check(err);
+    if (req.user.username === req.body.receiver) {
+        //Don't create a consent for oneself.
+        res.status(403).json({
+            message: "could not create consent: consent for sender[" + req.user.username + "] and receiver[" + req.body.receiver + "]. They are the same!"
+        });
+    } else {
+        /*
+         * Get the other user's public key to encrypt this person's encryption key
+         */
+        Person.findOne({username: req.body.receiver}, function (err, person) {
+            errorchecker.check(err, res);
+            if (person) {
+                //Check if already exists. Only create if not
+                Consent.findOne({sender: req.user.username, receiver: req.body.receiver}, function (err, consent) {
+                    errorchecker.check(err, res);
 
-                res.status(200).json({
-                    message: "Successfully saved new consent for user " + consent.receiver,
-                    receiver: consent.receiver
+                    if (!consent) {// create a new consent
+                        new Consent().createConsent(req.user.username, person.username, req.session.encryptionKey, person.publicKey, function (err, consent) {
+                            errorchecker.check(err, res);
+
+                            res.status(200).json({
+                                message: "Successfully saved new consent for user " + consent.receiver,
+                                receiver: consent.receiver
+                            });
+                        });
+                    } else { //Consent already exists. Refuse
+                        res.status(403).json({
+                            message: "could not create consent: consent for sender[" + req.user.username + "] and receiver[" + req.body.receiver + "] already exists"
+                        });
+                    }
                 });
-            });
-        } else {
-            res.status(404).json({
-                message: "Could not find user  " + req.body.receiver,
-                receiver: req.body.receiver
-            });
-        }
-    });
-
+            } else {
+                res.status(404).json({
+                    message: "Could not find user  " + req.body.receiver,
+                    receiver: req.body.receiver
+                });
+            }
+        });
+    }
 });
 module.exports = router;

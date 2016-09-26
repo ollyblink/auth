@@ -8,14 +8,15 @@ var router = express.Router();
 var Account = require('../models/account');
 var Person = require('../models/person');
 var errorchecker = require('../utils/error/errorhelper');
+var authentication = require('../utils/authentication/authenticationhelper');
 
 /**
  * log out. Redirects to login
  */
-router.get('/logout', function (req, res) {
+router.get('/logout', authentication.isLoggedIn, function (req, res) {
     req.logout();
     res.status(200).json({
-        message:"Successfully logged out"
+        message: "Successfully logged out"
     });
 });
 
@@ -34,7 +35,7 @@ router.post('/register', function (req, res) {
     var password = req.body.password;
 
     Account.register(new Account({username: username}), password, function (err, account) {
-        errorchecker.check(err);
+        errorchecker.check(err,res);
         new Person().storeUser(username, password, function (err, person) {
             if (err) {
                 console.error(err);
@@ -59,13 +60,16 @@ router.post('/register', function (req, res) {
 /**
  * Login with a session
  */
-router.post('/login', passport.authenticate('local', {session: config.withSession}), function (req, res) {
+router.post('/', passport.authenticate('local', {session: config.withSession }), function (req, res) {
+    // req.logout();
+    console.log("request cookie:" + req.cookies['connect.sid']);
+
     var username = req.body.username;
     var password = req.body.password;
     console.log("user " + username + " tries to log in");
 
     Person.findOne({username: username}, function (err, user) {
-        errorchecker.check(err);
+        errorchecker.check(err,res);
 
         //Decrypt the private key using the password in clear text
         var privateKey = security.symmetricDecrypt(user.privateKeyEnc, password);
@@ -78,10 +82,15 @@ router.post('/login', passport.authenticate('local', {session: config.withSessio
 
         console.log("user " + username + " logged in");
         res.status(200).json({
-            user: username
+            user: username,
+            message: "user " + username + " logged in"
         });
     });
 
+});
+
+router.get('/isloggedin', function (req, res) {
+    res.json({isauth: req.isAuthenticated()});
 });
 
 

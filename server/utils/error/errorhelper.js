@@ -1,5 +1,5 @@
 module.exports = {
-    check: function (err) {
+    check: function (err,res) {
         if (err) {
             console.error(err);
             res.status(err.status || 500);

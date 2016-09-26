@@ -24,16 +24,30 @@ var indexRoutes = require('./routes/index');
 var consentRoutes = require('./routes/consent');
 var dataRoutes = require('./routes/data');
 
-//cors is necessary for correct parsing of the data from the mongo db
-var cors = require("cors");
-
+//here is the magic
 // for  authentication
 var passport = require('passport');
 var LocalStrategy = require('passport-local').Strategy;
 
 var app = express();
-app.use(cors());
+var cors = require("cors");
 
+var originsWhitelist = [
+    'http://localhost:3002'       //this is my front-end url for development
+];
+var corsOptions = {
+    origin: function (origin, callback) {
+        var isWhitelisted = originsWhitelist.indexOf(origin) !== -1;
+        callback(null, isWhitelisted);
+    }
+    , credentials: true
+}
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // include before other routes
+// app.options('/data/user/:user/item/:itemtitle', cors(corsOptions)); // enable pre-flight request for DELETE request
+// app.del('/data/user/:user/item/:itemtitle', cors(corsOptions), function(req, res, next){
+//     res.json({msg: 'This is CORS-enabled for all origins!'});
+// });
 // view engine setup
 // app.set('views', path.join(__dirname, 'views'));
 // app.set('view engine', 'html');
@@ -48,7 +62,7 @@ app.use(require('express-session')({
     secret: security.createRandomSymmetricKeyString(),
     resave: false,
     saveUninitialized: false,
-    cookie: {secure: true, httpOnly: true}
+    cookie: {secure: false, httpOnly: false}
 }));
 app.use(passport.initialize());
 app.use(passport.session());
